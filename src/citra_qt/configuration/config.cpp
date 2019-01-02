@@ -617,11 +617,7 @@ QVariant Config::ReadSetting(const QString& name) {
 
 QVariant Config::ReadSetting(const QString& name, const QVariant& default_value) {
     QVariant result;
-    if (qt_config->value(name + "/default", false).toBool()) {
-        result = default_value;
-    } else {
-        result = qt_config->value(name, default_value);
-    }
+    result = qt_config->value(name, default_value);
     return result;
 }
 
