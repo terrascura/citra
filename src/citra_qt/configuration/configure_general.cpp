@@ -26,6 +26,7 @@ ConfigureGeneral::~ConfigureGeneral() = default;
 void ConfigureGeneral::setConfiguration() {
     ui->toggle_check_exit->setChecked(UISettings::values.confirm_before_closing);
     ui->toggle_is_new_3ds->setChecked(Settings::values.is_new_3ds);
+    ui->toggle_use_priority_boost->setChecked(Settings::values.use_priority_boost);
 
     ui->toggle_update_check->setChecked(UISettings::values.check_for_update_on_start);
     ui->toggle_auto_update->setChecked(UISettings::values.update_on_close);
@@ -60,6 +61,7 @@ void ConfigureGeneral::applyConfiguration() {
     Settings::values.region_value = ui->region_combobox->currentIndex() - 1;
 
     Settings::values.is_new_3ds = ui->toggle_is_new_3ds->isChecked();
+    Settings::values.use_priority_boost = ui->toggle_use_priority_boost->isChecked();
 }
 
 void ConfigureGeneral::retranslateUi() {

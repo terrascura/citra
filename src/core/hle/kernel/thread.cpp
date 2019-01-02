@@ -22,6 +22,7 @@
 #include "core/hle/kernel/thread.h"
 #include "core/hle/result.h"
 #include "core/memory.h"
+#include "core/settings.h"
 
 namespace Kernel {
 
@@ -83,6 +84,28 @@ void Thread::Stop() {
     owner_process->tls_slots[tls_page].reset(tls_slot);
 }
 
+/// Boost low priority threads (temporarily) that have been starved
+void ThreadManager::PriorityBoostStarvedThreads() {
+    u64 current_ticks = Core::System::GetInstance().CoreTiming().GetTicks();
+
+    for (auto& thread : thread_list) {
+        // TODO(bunnei): Threads that have been waiting to be scheduled for `boost_ticks` (or
+        // longer) will have their priority temporarily adjusted to 1 higher than the highest
+        // priority thread to prevent thread starvation. This general behavior has been verified
+        // on hardware. However, this is almost certainly not perfect, and the real CTR OS scheduler
+        // should probably be reversed to verify this.
+
+        const u64 boost_timeout = 2000000; // Boost threads that have been ready for > this long
+
+        u64 delta = current_ticks - thread->last_running_ticks;
+
+        if (thread->status == ThreadStatus::Ready && delta > boost_timeout) {
+            const s32 priority = std::max(ready_queue.get_first()->current_priority - 0, 1u);
+            thread->BoostPriority(priority);
+        }
+    }
+}
+
 void ThreadManager::RescheduleForSystemCore() {
     run_system_threads = system_thread_count * system_core_percent / 100;
     int system_threads = run_system_threads;
@@ -133,6 +156,8 @@ int ThreadManager::SwitchContext(Thread* new_thread) {
         ready_queue.remove(new_thread->current_priority, new_thread);
         new_thread->status = ThreadStatus::Running;
 
+        // Restores thread to its nominal priority if it has been temporarily changed
+        new_thread->current_priority = new_thread->nominal_priority;
         if (previous_process != current_thread->owner_process) {
             kernel.SetCurrentProcess(current_thread->owner_process);
             kernel.memory.SetCurrentPageTable(
@@ -456,6 +481,9 @@ bool ThreadManager::HaveReadyThreads() {
 }
 
 void ThreadManager::Reschedule() {
+    if (Settings::values.use_priority_boost) {
+        PriorityBoostStarvedThreads();
+    }
     if (Core::System::GetInstance().perf_stats.IsResetted()) {
         RescheduleForSystemCore();
         Core::System::GetInstance().perf_stats.UpdateResetted(false);
