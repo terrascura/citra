@@ -52,4 +52,8 @@ void RequestScreenshot(void* data, std::function<void()> callback,
 
 u16 GetResolutionScaleFactor();
 
+void LockSyncGPU(int);
+void ReleaseSyncGPU(int);
+bool WaitSyncGPU(int);
+
 } // namespace VideoCore

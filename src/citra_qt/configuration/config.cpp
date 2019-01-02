@@ -137,6 +137,7 @@ void Config::ReadValues() {
     Settings::values.resolution_factor =
         static_cast<u16>(ReadSetting("resolution_factor", 1).toInt());
     Settings::values.vsync_enabled = ReadSetting("vsync_enabled", false).toBool();
+    Settings::values.use_glsync = ReadSetting("use_glsync", true).toBool();
     Settings::values.use_frame_limit = ReadSetting("use_frame_limit", true).toBool();
     Settings::values.frame_limit = ReadSetting("frame_limit", 100).toInt();
     Settings::values.use_format_reinterpret_hack =
@@ -438,6 +439,7 @@ void Config::SaveValues() {
     WriteSetting("use_shader_jit", Settings::values.use_shader_jit, true);
     WriteSetting("resolution_factor", Settings::values.resolution_factor, 1);
     WriteSetting("vsync_enabled", Settings::values.vsync_enabled, false);
+    WriteSetting("use_glsync", Settings::values.use_glsync, true);
     WriteSetting("use_frame_limit", Settings::values.use_frame_limit, true);
     WriteSetting("frame_limit", Settings::values.frame_limit, 100);
     WriteSetting("use_format_reinterpret_hack", Settings::values.use_format_reinterpret_hack, true);

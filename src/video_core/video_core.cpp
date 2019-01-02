@@ -52,10 +52,45 @@ Core::System::ResultStatus Init(EmuWindow& emu_window, Memory::MemorySystem& mem
 /// Shutdown the video core
 void Shutdown() {
     Pica::Shutdown();
+    if (Settings::values.use_glsync) {
+        ReleaseSyncGPU(0);
+    }
 
     g_renderer.reset();
 
     LOG_DEBUG(Render, "shutdown OK");
+}
+
+// GL Sync
+static std::array<GLsync, 2> syncObject{};
+static std::array<bool, 2> is_sync{};
+void LockSyncGPU(int idx) {
+    if (is_sync[idx]) return;
+    syncObject[idx] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+    is_sync[idx] = true;
+}
+void ReleaseSyncGPU(int idx) {
+    if (is_sync[idx]) {
+        glWaitSync(syncObject[idx], 0, GL_TIMEOUT_IGNORED);
+        glDeleteSync(syncObject[idx]);
+        is_sync[idx] = false;
+    }
+}
+bool WaitSyncGPU(int idx) {
+    if (is_sync[idx]) {
+        GLenum sync_state = glClientWaitSync(syncObject[idx], 0, 0); // no wait
+        if (sync_state == GL_ALREADY_SIGNALED || sync_state == GL_CONDITION_SATISFIED) {
+            ReleaseSyncGPU(idx);
+            return true;
+        }
+        if (sync_state == GL_WAIT_FAILED) {
+            LOG_CRITICAL(Render_OpenGL, "GPU is GL_WAIT_FAILED");
+            ReleaseSyncGPU(idx);
+            return true;
+        }
+        return false;
+    }
+    return true;
 }
 
 void RequestScreenshot(void* data, std::function<void()> callback,

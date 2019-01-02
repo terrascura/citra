@@ -101,6 +101,13 @@ RendererOpenGL::~RendererOpenGL() = default;
 
 /// Swap buffers (render frame)
 void RendererOpenGL::SwapBuffers() {
+    if (Settings::values.use_glsync) {
+        // Check GPU sync
+        bool is_busy = VideoCore::WaitSyncGPU(0);
+        // immediate release
+        VideoCore::ReleaseSyncGPU(0);
+    }
+
     // Maintain the rasterizer's state as a priority
     OpenGLState prev_state = OpenGLState::GetCurState();
     state.Apply();
@@ -179,6 +186,11 @@ void RendererOpenGL::SwapBuffers() {
     // Swap buffers
     render_window.PollEvents();
     render_window.SwapBuffers();
+
+    if (Settings::values.use_glsync) {
+        // Get GPU Sync
+        VideoCore::LockSyncGPU(0);
+    }
 
     Core::System::GetInstance().frame_limiter.DoFrameLimiting(
         Core::System::GetInstance().CoreTiming().GetGlobalTimeUs());
