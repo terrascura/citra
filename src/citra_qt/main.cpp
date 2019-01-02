@@ -1030,13 +1030,17 @@ void GMainWindow::OnGameListOpenFolder(u64 data_id, GameListOpenTarget target) {
     switch (target) {
     case GameListOpenTarget::SAVE_DATA: {
         open_target = "Save Data";
-        std::string sdmc_dir = FileUtil::GetUserPath(FileUtil::UserPath::SDMCDir);
+        std::string sdmc_dir = Settings::values.sdmc_dir.empty()
+                                  ? FileUtil::GetUserPath(FileUtil::UserPath::SDMCDir)
+                                  : Settings::values.sdmc_dir + "/";
         path = FileSys::ArchiveSource_SDSaveData::GetSaveDataPathFor(sdmc_dir, data_id);
         break;
     }
     case GameListOpenTarget::EXT_DATA: {
         open_target = "Extra Data";
-        std::string sdmc_dir = FileUtil::GetUserPath(FileUtil::UserPath::SDMCDir);
+        std::string sdmc_dir = Settings::values.sdmc_dir.empty()
+                                  ? FileUtil::GetUserPath(FileUtil::UserPath::SDMCDir)
+                                  : Settings::values.sdmc_dir + "/";
         path = FileSys::GetExtDataPathFromId(sdmc_dir, data_id);
         break;
     }

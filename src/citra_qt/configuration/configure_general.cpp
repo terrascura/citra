@@ -2,6 +2,7 @@
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
+#include <QFileDialog>
 #include <QMessageBox>
 #include "citra_qt/configuration/configure_general.h"
 #include "citra_qt/ui_settings.h"
@@ -13,9 +14,23 @@ ConfigureGeneral::ConfigureGeneral(QWidget* parent)
     : QWidget(parent), ui(new Ui::ConfigureGeneral) {
 
     ui->setupUi(this);
+
+    connect(ui->button_sdmc_dir_empty, &QPushButton::clicked, this, [&](bool checked) {
+        Q_UNUSED(checked);
+        ui->sdmc_dir->setText(QString());
+    });
+
+   connect(ui->button_sdmc_dir, &QToolButton::clicked, this, [&](bool checked) {
+        Q_UNUSED(checked);
+        ui->sdmc_dir->setText(
+            QFileDialog::getExistingDirectory(this, tr("Select SD card root")));
+    });
+
     this->setConfiguration();
 
     ui->toggle_is_new_3ds->setEnabled(!Core::System::GetInstance().IsPoweredOn());
+    ui->button_sdmc_dir->setEnabled(!Core::System::GetInstance().IsPoweredOn());
+    ui->button_sdmc_dir_empty->setEnabled(!Core::System::GetInstance().IsPoweredOn());
     ui->updateBox->setVisible(UISettings::values.updater_found);
     connect(ui->button_reset_defaults, &QPushButton::clicked, this,
             &ConfigureGeneral::ResetDefaults);
@@ -28,6 +43,7 @@ void ConfigureGeneral::setConfiguration() {
     ui->toggle_is_new_3ds->setChecked(Settings::values.is_new_3ds);
     ui->toggle_use_priority_boost->setChecked(Settings::values.use_priority_boost);
     ui->toggle_use_force_indexed->setChecked(Settings::values.use_force_indexed);
+    ui->sdmc_dir->setText(QString::fromStdString(Settings::values.sdmc_dir));
 
     ui->toggle_update_check->setChecked(UISettings::values.check_for_update_on_start);
     ui->toggle_auto_update->setChecked(UISettings::values.update_on_close);
@@ -64,6 +80,9 @@ void ConfigureGeneral::applyConfiguration() {
     Settings::values.is_new_3ds = ui->toggle_is_new_3ds->isChecked();
     Settings::values.use_priority_boost = ui->toggle_use_priority_boost->isChecked();
     Settings::values.use_force_indexed = ui->toggle_use_force_indexed->isChecked();
+    sdmc_dir_changed = Settings::values.sdmc_dir != ui->sdmc_dir->text().toStdString();
+    Settings::values.sdmc_dir = ui->sdmc_dir->text().toStdString();
+
 }
 
 void ConfigureGeneral::retranslateUi() {

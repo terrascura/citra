@@ -32,6 +32,7 @@
 #include "core/hle/service/fs/archive.h"
 #include "core/loader/loader.h"
 #include "core/loader/smdh.h"
+#include "core/settings.h"
 
 namespace Service::AM {
 
@@ -492,8 +493,10 @@ std::string GetMediaTitlePath(Service::FS::MediaType media_type) {
 
     if (media_type == Service::FS::MediaType::SDMC)
         return fmt::format("{}Nintendo 3DS/{}/{}/title/",
-                           FileUtil::GetUserPath(FileUtil::UserPath::SDMCDir), SYSTEM_ID,
-                           SDCARD_ID);
+                           Settings::values.sdmc_dir.empty()
+                           ? FileUtil::GetUserPath(FileUtil::UserPath::SDMCDir)
+                           : std::string(Settings::values.sdmc_dir + "/"),
+                           SYSTEM_ID, SDCARD_ID);
 
     if (media_type == Service::FS::MediaType::GameCard) {
         // TODO(shinyquagsire23): get current app parent folder if TID matches?

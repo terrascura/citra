@@ -170,6 +170,7 @@ void Config::ReadValues() {
     // Data Storage
     Settings::values.use_virtual_sd =
         sdl2_config->GetBoolean("Data Storage", "use_virtual_sd", true);
+    Settings::values.sdmc_dir = sdl2_config->Get("Data Storage", "sdmc_dir", "");
 
     // System
     Settings::values.is_new_3ds = sdl2_config->GetBoolean("System", "is_new_3ds", false);

@@ -92,6 +92,41 @@
             </property>
            </widget>
           </item>
+          <item>
+          <layout class="QHBoxLayout" name="layout_sdmc_dir">
+            <item>
+             <widget class="QLabel" name="label_sdmc_dir">
+              <property name="text">
+               <string>SDMC Directory:</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="sdmc_dir">
+              <property name="toolTip">
+               <string>Empty for user directory/sdmc</string>
+              </property>
+              <property name="readOnly">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="button_sdmc_dir_empty">
+              <property name="text">
+               <string>Clear</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QToolButton" name="button_sdmc_dir">
+              <property name="text">
+               <string>...</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
          </layout>
         </item>
        </layout>

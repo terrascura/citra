@@ -201,6 +201,10 @@ volume =
 # 1 (default): Yes, 0: No
 use_virtual_sd =
 
+# The SD card root
+# empty: user directory/sdmc
+sdmc_dir =
+
 [System]
 # The system model that Citra will try to emulate
 # 0: Old 3DS (default), 1: New 3DS

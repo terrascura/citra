@@ -24,6 +24,7 @@ public:
     void ResetDefaults();
     void applyConfiguration();
     void retranslateUi();
+    bool sdmc_dir_changed;
     void setConfiguration();
 
 private:

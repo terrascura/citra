@@ -24,6 +24,8 @@ public:
     void UpdateVisibleTabs();
     void PopulateSelectionList();
 
+    bool sdmc_dir_changed;
+
 private slots:
     void onLanguageChanged(const QString& locale);
 
