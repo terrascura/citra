@@ -3,6 +3,7 @@
 // Refer to the license.txt file included.
 
 #include <memory>
+#include <SDL.h>
 #include "audio_core/sink.h"
 #include "audio_core/sink_details.h"
 #include "citra_qt/configuration/configure_audio.h"
@@ -25,6 +26,15 @@ ConfigureAudio::ConfigureAudio(QWidget* parent)
     ui->emulation_combo_box->addItem(tr("LLE multi-core"));
     ui->emulation_combo_box->setEnabled(!Core::System::GetInstance().IsPoweredOn());
 
+    ui->input_device_combo_box->setEnabled(Settings::values.enable_input_device);
+    connect(ui->enable_input_device, &QCheckBox::stateChanged, ui->input_device_combo_box, &QComboBox::setEnabled);
+    ui->input_device_combo_box->clear();
+    ui->input_device_combo_box->addItem("auto");
+    int num_devices{SDL_GetNumAudioDevices(1)};
+    for (int i{}; i < num_devices; ++i) {
+            ui->input_device_combo_box->addItem(SDL_GetAudioDeviceName(i, 1));
+    }
+
     connect(ui->volume_slider, &QSlider::valueChanged, this,
             &ConfigureAudio::setVolumeIndicatorText);
 
@@ -43,6 +53,20 @@ void ConfigureAudio::setConfiguration() {
     updateAudioDevices(ui->output_sink_combo_box->currentIndex());
 
     setAudioDeviceFromDeviceID();
+
+    ui->enable_input_device->setChecked(Settings::values.enable_input_device);
+    {
+    int new_device_index = -1;
+    for (int index = 0; index < ui->input_device_combo_box->count(); index++) {
+        if (ui->input_device_combo_box->itemText(index).toStdString() ==
+            Settings::values.input_device) {
+            new_device_index = index;
+            break;
+        }
+    }
+
+    ui->input_device_combo_box->setCurrentIndex(new_device_index);
+    }
 
     ui->toggle_audio_stretching->setChecked(Settings::values.enable_audio_stretching);
     ui->volume_slider->setValue(Settings::values.volume * ui->volume_slider->maximum());
@@ -101,6 +125,8 @@ void ConfigureAudio::applyConfiguration() {
     Settings::values.audio_device_id =
         ui->audio_device_combo_box->itemText(ui->audio_device_combo_box->currentIndex())
             .toStdString();
+    Settings::values.enable_input_device = ui->enable_input_device->isChecked();
+    Settings::values.input_device = ui->input_device_combo_box->currentText().toStdString();
     Settings::values.volume =
         static_cast<float>(ui->volume_slider->sliderPosition()) / ui->volume_slider->maximum();
     Settings::values.enable_dsp_lle = ui->emulation_combo_box->currentIndex() != 0;

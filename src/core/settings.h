@@ -173,6 +173,8 @@ struct Values {
     std::string sink_id;
     bool enable_audio_stretching;
     std::string audio_device_id;
+    bool enable_input_device;
+    std::string input_device;
     float volume;
 
     // Camera

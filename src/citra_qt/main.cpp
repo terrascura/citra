@@ -14,6 +14,7 @@
 #include <QtConcurrent/QtConcurrentRun>
 #include <QtGui>
 #include <QtWidgets>
+#include <SDL.h>
 #include <fmt/format.h>
 #include "citra_qt/aboutdialog.h"
 #include "citra_qt/applets/swkbd.h"
@@ -1983,6 +1984,7 @@ int main(int argc, char* argv[]) {
     Camera::RegisterFactory("image", std::make_unique<Camera::StillImageCameraFactory>());
     Camera::RegisterFactory("qt", std::make_unique<Camera::QtMultimediaCameraFactory>());
     Camera::QtMultimediaCameraHandler::Init();
+    SDL_InitSubSystem(SDL_INIT_AUDIO);
 
     // Register frontend applets
     Frontend::RegisterDefaultApplets();
@@ -1990,6 +1992,7 @@ int main(int argc, char* argv[]) {
 
     main_window.show();
     int result = app.exec();
+    SDL_QuitSubSystem(SDL_INIT_AUDIO);
     detached_tasks.WaitForAllTasks();
     return result;
 }

@@ -18,6 +18,7 @@ class MIC_U final : public ServiceFramework<MIC_U> {
 public:
     explicit MIC_U(Core::System& system);
     ~MIC_U();
+    void ReloadDevice();
 
 private:
     /**
@@ -191,5 +192,6 @@ private:
 };
 
 void InstallInterfaces(Core::System& system);
+void ReloadDevice();
 
 } // namespace Service::MIC

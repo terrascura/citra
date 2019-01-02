@@ -2,6 +2,7 @@
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
+#include <SDL.h>
 #include "common/logging/log.h"
 #include "core/core.h"
 #include "core/hle/ipc.h"
@@ -11,8 +12,11 @@
 #include "core/hle/kernel/kernel.h"
 #include "core/hle/kernel/shared_memory.h"
 #include "core/hle/service/mic_u.h"
+#include "core/settings.h"
 
 namespace Service::MIC {
+
+MIC_U* current_mic{};
 
 enum class Encoding : u8 {
     PCM8 = 0,
@@ -29,6 +33,8 @@ enum class SampleRate : u8 {
 };
 
 struct MIC_U::Impl {
+    SDL_AudioDeviceID dev;
+
     explicit Impl(Core::System& system) {
         buffer_full_event =
             system.Kernel().CreateEvent(Kernel::ResetType::OneShot, "MIC_U::buffer_full_event");
@@ -57,15 +63,91 @@ struct MIC_U::Impl {
         LOG_WARNING(Service_MIC, "called");
     }
 
+    void StartSampling() {
+        SDL_AudioSpec want{}, have;
+        want.channels = 1;
+        switch (encoding) {
+        case Encoding::PCM16:
+            want.format = AUDIO_U16;
+            break;
+        case Encoding::PCM16Signed:
+            want.format = AUDIO_S16;
+            break;
+        case Encoding::PCM8:
+            want.format = AUDIO_U8;
+            break;
+        case Encoding::PCM8Signed:
+            want.format = AUDIO_S8;
+            break;
+        }
+        want.samples = 1024;
+        switch (sample_rate) {
+        case SampleRate::SampleRate10910:
+            want.freq = 10910;
+            break;
+        case SampleRate::SampleRate16360:
+            want.freq = 16360;
+            break;
+        case SampleRate::SampleRate32730:
+            want.freq = 32730;
+            break;
+        case SampleRate::SampleRate8180:
+            want.freq = 8180;
+            break;
+        }
+        want.userdata = this;
+        want.callback = [](void* userdata, Uint8* data, int len) {
+            Impl* impl{static_cast<Impl*>(userdata)};
+            if (!impl) {
+                return;
+            }
+
+            u8* buffer{impl->shared_memory->GetPointer()};
+            if (!buffer) {
+                return;
+            }
+
+            u32 offset;
+            std::memcpy(&offset, buffer + impl->audio_buffer_size, sizeof(offset));
+
+            // TODO: How does the 3DS handles looped input buffers
+            if (len > impl->audio_buffer_size - offset) {
+                offset = impl->audio_buffer_offset;
+            }
+
+            std::memcpy(buffer + offset, data, len);
+            offset += len;
+            std::memcpy(buffer + impl->audio_buffer_size, &offset, sizeof(offset));
+        };
+        dev = SDL_OpenAudioDevice(
+            (Settings::values.input_device.empty() || Settings::values.input_device == "auto")
+                ? NULL
+                : Settings::values.input_device.c_str(),
+            1, &want, &have, 0);
+        if (dev == 0) {
+            LOG_ERROR(Service_MIC, "Failed to open device: {}", SDL_GetError());
+        } else {
+            if (have.format != want.format) {
+                LOG_WARNING(Service_MIC, "Format not supported");
+            } else {
+                SDL_PauseAudioDevice(dev, 0);
+                is_sampling = true;
+            }
+        }
+    }
+
     void StartSampling(Kernel::HLERequestContext& ctx) {
         IPC::RequestParser rp{ctx, 0x03, 5, 0};
 
         encoding = rp.PopEnum<Encoding>();
         sample_rate = rp.PopEnum<SampleRate>();
-        audio_buffer_offset = rp.PopRaw<s32>();
+        audio_buffer_offset = rp.Pop<u32>();
         audio_buffer_size = rp.Pop<u32>();
         audio_buffer_loop = rp.Pop<bool>();
 
+        if (Settings::values.enable_input_device) {
+            StartSampling();
+        }
         IPC::RequestBuilder rb = rp.MakeBuilder(1, 0);
         rb.Push(RESULT_SUCCESS);
         is_sampling = true;
@@ -79,18 +161,31 @@ struct MIC_U::Impl {
     void AdjustSampling(Kernel::HLERequestContext& ctx) {
         IPC::RequestParser rp{ctx, 0x04, 1, 0};
         sample_rate = rp.PopEnum<SampleRate>();
-
+        if (Settings::values.enable_input_device) {
+            StopSampling();
+            StartSampling();
+        }
         IPC::RequestBuilder rb = rp.MakeBuilder(1, 0);
         rb.Push(RESULT_SUCCESS);
         LOG_WARNING(Service_MIC, "(STUBBED) called, sample_rate={}", static_cast<u32>(sample_rate));
     }
 
+    void StopSampling() {
+        if (dev != 0) {
+            SDL_CloseAudioDevice(dev);
+            is_sampling = false;
+        }
+    }
+
     void StopSampling(Kernel::HLERequestContext& ctx) {
         IPC::RequestParser rp{ctx, 0x05, 0, 0};
-        IPC::RequestBuilder rb = rp.MakeBuilder(1, 0);
+        if (Settings::values.enable_input_device) {
+            StopSampling();
+        }
+        IPC::RequestBuilder rb{rp.MakeBuilder(1, 0)};
         rb.Push(RESULT_SUCCESS);
         is_sampling = false;
-        LOG_WARNING(Service_MIC, "(STUBBED) called");
+        LOG_DEBUG(Service_MIC, "called");
     }
 
     void IsSampling(Kernel::HLERequestContext& ctx) {
@@ -190,6 +285,13 @@ struct MIC_U::Impl {
 
         IPC::RequestBuilder rb = rp.MakeBuilder(1, 0);
         rb.Push(RESULT_SUCCESS);
+    }
+
+    void ReloadDevice() {
+        if (is_sampling) {
+            StopSampling();
+            StartSampling();
+        }
     }
 
     u32 client_version = 0;
@@ -293,13 +395,25 @@ MIC_U::MIC_U(Core::System& system)
     };
 
     RegisterHandlers(functions);
+
+    current_mic = this;
 }
 
-MIC_U::~MIC_U() = default;
+MIC_U::~MIC_U() {}
+
+void MIC_U::ReloadDevice() {
+    impl->ReloadDevice();
+}
 
 void InstallInterfaces(Core::System& system) {
     auto& service_manager = system.ServiceManager();
     std::make_shared<MIC_U>(system)->InstallAsService(service_manager);
+}
+
+void ReloadDevice() {
+    if (!current_mic)
+        return;
+    current_mic->ReloadDevice();
 }
 
 } // namespace Service::MIC
