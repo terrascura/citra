@@ -98,7 +98,7 @@ enum : PAddr {
     N3DS_EXTRA_RAM_PADDR_END = N3DS_EXTRA_RAM_PADDR + N3DS_EXTRA_RAM_SIZE,
 
     /// DSP memory
-    DSP_RAM_PADDR = 0x1FF00000,
+    DSP_RAM_PADDR = 0x1FF40000,
     DSP_RAM_SIZE = 0x00080000, ///< DSP memory size (512KB)
     DSP_RAM_PADDR_END = DSP_RAM_PADDR + DSP_RAM_SIZE,
 
@@ -251,11 +251,15 @@ public:
 
     void ReadBlock(const Kernel::Process& process, VAddr src_addr, void* dest_buffer,
                    std::size_t size);
+    void ReadBlock(VAddr src_addr, void* dest_buffer, std::size_t size);
     void WriteBlock(const Kernel::Process& process, VAddr dest_addr, const void* src_buffer,
                     std::size_t size);
+    void WriteBlock(VAddr dest_addr, const void* src_buffer, std::size_t size);
     void ZeroBlock(const Kernel::Process& process, VAddr dest_addr, const std::size_t size);
+    void ZeroBlock(VAddr dest_addr, const std::size_t size);
     void CopyBlock(const Kernel::Process& process, VAddr dest_addr, VAddr src_addr,
                    std::size_t size);
+    void CopyBlock(VAddr dest_addr, VAddr src_addr, std::size_t size);
     void CopyBlock(const Kernel::Process& src_process, const Kernel::Process& dest_process,
                    VAddr src_addr, VAddr dest_addr, std::size_t size);
 
@@ -311,5 +315,6 @@ private:
 
 /// Determines if the given VAddr is valid for the specified process.
 bool IsValidVirtualAddress(const Kernel::Process& process, VAddr vaddr);
+bool IsValidVirtualAddress(VAddr vaddr);
 
 } // namespace Memory

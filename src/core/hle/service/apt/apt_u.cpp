@@ -70,7 +70,7 @@ APT_U::APT_U(std::shared_ptr<Module> apt)
         {0x003B0040, &APT_U::CancelLibraryApplet, "CancelLibraryApplet"},
         {0x003C0042, nullptr, "SendDspSleep"},
         {0x003D0042, nullptr, "SendDspWakeUp"},
-        {0x003E0080, nullptr, "ReplySleepQuery"},
+        {0x003E0080, &APT_U::ReplySleepQuery, "ReplySleepQuery"},
         {0x003F0040, nullptr, "ReplySleepNotificationComplete"},
         {0x00400042, &APT_U::SendCaptureBufferInfo, "SendCaptureBufferInfo"},
         {0x00410040, &APT_U::ReceiveCaptureBufferInfo, "ReceiveCaptureBufferInfo"},

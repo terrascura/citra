@@ -20,6 +20,10 @@ public:
         Interface(std::shared_ptr<Module> act, const char* name);
         ~Interface();
 
+        void Initialize(Kernel::HLERequestContext& ctx);
+
+        void Unknown(Kernel::HLERequestContext& ctx);
+
     private:
         std::shared_ptr<Module> act;
     };

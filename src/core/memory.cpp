@@ -763,6 +763,9 @@ u8 ReadMMIO<u8>(MMIORegionPointer mmio_handler, VAddr addr) {
     return mmio_handler->Read8(addr);
 }
 
+template <typename T>
+void WriteMMIO(MMIORegionPointer mmio_handler, VAddr addr, const T data) {}
+
 template <>
 u16 ReadMMIO<u16>(MMIORegionPointer mmio_handler, VAddr addr) {
     return mmio_handler->Read16(addr);
