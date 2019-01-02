@@ -22,8 +22,11 @@
 #include "common/microprofile.h"
 #include "common/scope_exit.h"
 #include "common/vector_math.h"
+#include "core/core.h"
+#include "core/core_timing.h"
 #include "core/frontend/emu_window.h"
 #include "core/memory.h"
+#include "core/settings.h"
 #include "video_core/pica_state.h"
 #include "video_core/renderer_base.h"
 #include "video_core/renderer_opengl/gl_rasterizer_cache.h"
@@ -1022,12 +1025,23 @@ void main() {
     ASSERT(d24s8_abgr_tbo_size_u_id != -1);
     d24s8_abgr_viewport_u_id = glGetUniformLocation(d24s8_abgr_shader.handle, "viewport");
     ASSERT(d24s8_abgr_viewport_u_id != -1);
+
+    if (Settings::values.enable_cache_clear) {
+        auto& timing = Core::System::GetInstance().CoreTiming();
+        cache_clear_event =
+            timing.RegisterEvent("Rasterizer Cache Clear Event", [&timing, this](u64, s64) {
+                ClearAllCaches();
+                timing.ScheduleEvent(msToCycles(1000 * Settings::values.clear_cache_secs), cache_clear_event);
+            });
+        timing.ScheduleEvent(msToCycles(1000 * Settings::values.clear_cache_secs), cache_clear_event);
+    }
 }
 
 RasterizerCacheOpenGL::~RasterizerCacheOpenGL() {
-    FlushAll();
-    while (!surface_cache.empty())
-        UnregisterSurface(*surface_cache.begin()->second.begin());
+    if (cache_clear_event != nullptr) {
+        Core::System::GetInstance().CoreTiming().UnscheduleEvent(cache_clear_event, 0);
+    }
+    ClearAllCaches();
 }
 
 MICROPROFILE_DEFINE(OpenGL_BlitSurface, "OpenGL", "BlitSurface", MP_RGB(128, 192, 64));
@@ -1365,10 +1379,7 @@ SurfaceSurfaceRect_Tuple RasterizerCacheOpenGL::GetFramebufferSurfaces(
     static u16 resolution_scale_factor = VideoCore::GetResolutionScaleFactor();
     if (resolution_scale_factor != VideoCore::GetResolutionScaleFactor()) {
         resolution_scale_factor = VideoCore::GetResolutionScaleFactor();
-        FlushAll();
-        while (!surface_cache.empty())
-            UnregisterSurface(*surface_cache.begin()->second.begin());
-        texture_cube_cache.clear();
+        ClearAllCaches();
     }
 
     MathUtil::Rectangle<u32> viewport_clamped{
@@ -1763,6 +1774,13 @@ void RasterizerCacheOpenGL::UpdatePagesCachedCount(PAddr addr, u32 size, int del
 
     if (delta < 0)
         cached_pages.add({pages_interval, delta});
+}
+
+void RasterizerCacheOpenGL::ClearAllCaches() {
+    FlushAll();
+    while (!surface_cache.empty())
+        UnregisterSurface(*surface_cache.begin()->second.begin());
+    texture_cube_cache.clear();
 }
 
 } // namespace OpenGL

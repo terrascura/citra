@@ -24,6 +24,8 @@ ConfigureGraphics::ConfigureGraphics(QWidget* parent)
     connect(ui->FMV_hack, &QCheckBox::stateChanged, ui->AddTicks, &QSpinBox::setEnabled);
     ui->screen_refresh_rate->setEnabled(Settings::values.custom_refresh_rate);
     connect(ui->custom_refresh_rate, &QCheckBox::stateChanged, ui->screen_refresh_rate, &QSpinBox::setEnabled);
+    ui->clear_cache_secs->setEnabled(Settings::values.enable_cache_clear);
+    connect(ui->enable_cache_clear, &QCheckBox::stateChanged, ui->clear_cache_secs, &QSpinBox::setEnabled);
 
     ui->layoutBox->setEnabled(!Settings::values.custom_layout);
 
@@ -79,6 +81,8 @@ void ConfigureGraphics::setConfiguration() {
     ui->AddTicks->setValue(Settings::values.AddTicks);
     ui->custom_refresh_rate->setChecked(Settings::values.custom_refresh_rate);
     ui->screen_refresh_rate->setValue(Settings::values.screen_refresh_rate);
+    ui->enable_cache_clear->setChecked(Settings::values.enable_cache_clear);
+    ui->clear_cache_secs->setValue(Settings::values.clear_cache_secs);
 }
 
 void ConfigureGraphics::applyConfiguration() {
@@ -104,6 +108,8 @@ void ConfigureGraphics::applyConfiguration() {
     Settings::values.AddTicks = ui->AddTicks->value();
     Settings::values.custom_refresh_rate = ui->custom_refresh_rate->isChecked();
     Settings::values.screen_refresh_rate = ui->screen_refresh_rate->value();
+    Settings::values.enable_cache_clear = ui->enable_cache_clear->isChecked();
+    Settings::values.clear_cache_secs = ui->clear_cache_secs->value();
 }
 
 void ConfigureGraphics::retranslateUi() {

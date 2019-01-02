@@ -31,6 +31,10 @@
 #include "video_core/renderer_opengl/gl_resource_manager.h"
 #include "video_core/texture/texture_decode.h"
 
+namespace Core {
+struct TimingEventType;
+}
+
 namespace OpenGL {
 
 struct TextureCubeConfig {
@@ -458,6 +462,9 @@ public:
     void FlushAll();
 
 private:
+    // Clear the caches
+    void ClearAllCaches();
+
     void DuplicateSurface(const Surface& src_surface, const Surface& dest_surface);
 
     /// Update surface's texture for given region when necessary
@@ -491,5 +498,7 @@ private:
     GLint d24s8_abgr_viewport_u_id;
 
     std::unordered_map<TextureCubeConfig, CachedTextureCube> texture_cube_cache;
+
+    Core::TimingEventType* cache_clear_event = nullptr;
 };
 } // namespace OpenGL
