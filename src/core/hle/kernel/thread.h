@@ -33,7 +33,8 @@ enum ThreadProcessorId : s32 {
     ThreadProcessorIdDefault = -2, ///< Run thread on default core specified by exheader
     ThreadProcessorIdAll = -1,     ///< Run thread on either core
     ThreadProcessorId0 = 0,        ///< Run thread on core 0 (AppCore)
-    ThreadProcessorId1 = 1,        ///< Run thread on core 1 (SysCore)
+    ThreadProcessorId1 = 1,        ///< Run thread on core 1 (SysCore1)
+    ThreadProcessorId2 = 2,        ///< Run thread on core 2 (SysCore2)
     ThreadProcessorIdMax = 2,      ///< Processor ID must be less than this
 };
 
@@ -106,7 +107,9 @@ private:
      * Switches the CPU's active thread context to that of the specified thread
      * @param new_thread The thread to switch to
      */
-    void SwitchContext(Thread* new_thread);
+    int SwitchContext(Thread* new_thread);
+
+    void RescheduleForSystemCore();
 
     /**
      * Pops and returns the next thread from the thread queue
@@ -151,6 +154,8 @@ public:
     HandleType GetHandleType() const override {
         return HANDLE_TYPE;
     }
+
+    static void UpdateSystemCorePercent(int per);
 
     bool ShouldWait(Thread* thread) const override;
     void Acquire(Thread* thread) override;

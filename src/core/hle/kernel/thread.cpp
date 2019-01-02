@@ -25,6 +25,11 @@
 
 namespace Kernel {
 
+static int system_core_percent = 100;
+static int system_thread_count = 0;
+static int run_system_threads = 0;
+static int system_core_base = ThreadProcessorId1;
+
 bool Thread::ShouldWait(Thread* thread) const {
     return status != ThreadStatus::Dead;
 }
@@ -78,7 +83,24 @@ void Thread::Stop() {
     owner_process->tls_slots[tls_page].reset(tls_slot);
 }
 
-void ThreadManager::SwitchContext(Thread* new_thread) {
+void ThreadManager::RescheduleForSystemCore() {
+    run_system_threads = system_thread_count * system_core_percent / 100;
+    int system_threads = run_system_threads;
+    if (system_threads == 0) return;
+
+    for (auto& thread : thread_list) {
+        if (thread->status == ThreadStatus::Ready && thread->processor_id >= system_core_base) {
+            if (system_threads <= 0) {
+                const s32 priority = std::min(thread->current_priority + 10,
+                                 static_cast<unsigned int>(ThreadPrioLowest));
+                thread->BoostPriority(priority);
+            }
+            --system_threads;
+        }
+    }
+}
+
+int ThreadManager::SwitchContext(Thread* new_thread) {
     Thread* previous_thread = GetCurrentThread();
 
     Core::Timing& timing = Core::System::GetInstance().CoreTiming();
@@ -119,10 +141,12 @@ void ThreadManager::SwitchContext(Thread* new_thread) {
 
         Core::CPU().LoadContext(new_thread->context);
         Core::CPU().SetCP15Register(CP15_THREAD_URO, new_thread->GetTLSAddress());
+        return new_thread->processor_id;
     } else {
         current_thread = nullptr;
         // Note: We do not reset the current process and current page table when idling because
         // technically we haven't changed processes, our threads are just paused.
+        return -1;
     }
 }
 
@@ -145,6 +169,10 @@ Thread* ThreadManager::PopNextReadyThread() {
     return next;
 }
 
+void Thread::UpdateSystemCorePercent(int per) {
+    system_core_percent = per;
+}
+
 void ThreadManager::WaitCurrentThread_Sleep() {
     Thread* thread = GetCurrentThread();
     thread->status = ThreadStatus::WaitSleep;
@@ -153,6 +181,7 @@ void ThreadManager::WaitCurrentThread_Sleep() {
 void ThreadManager::ExitCurrentThread() {
     Thread* thread = GetCurrentThread();
     thread->Stop();
+    if (thread->processor_id >= system_core_base) --system_thread_count;
     thread_list.erase(std::remove(thread_list.begin(), thread_list.end(), thread),
                       thread_list.end());
 }
@@ -427,6 +456,11 @@ bool ThreadManager::HaveReadyThreads() {
 }
 
 void ThreadManager::Reschedule() {
+    if (Core::System::GetInstance().perf_stats.IsResetted()) {
+        RescheduleForSystemCore();
+        Core::System::GetInstance().perf_stats.UpdateResetted(false);
+    }
+
     Thread* cur = GetCurrentThread();
     Thread* next = PopNextReadyThread();
 
@@ -438,7 +472,13 @@ void ThreadManager::Reschedule() {
         LOG_TRACE(Kernel, "context switch idle -> {}", next->GetObjectId());
     }
 
-    SwitchContext(next);
+    int th_processor_id = SwitchContext(next);
+    if (th_processor_id >= system_core_base) {
+        // in system core
+        Core::System::GetInstance().CoreTiming().Advance();
+        Core::CPU().Run();
+        SwitchContext(PopNextReadyThread());
+    }
 }
 
 void Thread::SetWaitSynchronizationResult(ResultCode result) {
@@ -471,6 +511,8 @@ ThreadManager::~ThreadManager() {
     for (auto& t : thread_list) {
         t->Stop();
     }
+    system_core_percent = 100;
+    system_thread_count = 0;
 }
 
 const std::vector<SharedPtr<Thread>>& ThreadManager::GetThreadList() {

@@ -11,6 +11,7 @@
 #include "core/hle/applets/applet.h"
 #include "core/hle/kernel/mutex.h"
 #include "core/hle/kernel/shared_memory.h"
+#include "core/hle/kernel/thread.h"
 #include "core/hle/romfs.h"
 #include "core/hle/service/am/am.h"
 #include "core/hle/service/apt/applet_manager.h"
@@ -525,6 +526,8 @@ void Module::APTInterface::SetAppCpuTimeLimit(Kernel::HLERequestContext& ctx) {
 
     IPC::RequestBuilder rb = rp.MakeBuilder(1, 0);
     rb.Push(RESULT_SUCCESS); // No error
+
+    Kernel::Thread::UpdateSystemCorePercent(apt->cpu_percent);
 
     LOG_WARNING(Service_APT, "(STUBBED) called, cpu_percent={}, value={}", apt->cpu_percent, value);
 }

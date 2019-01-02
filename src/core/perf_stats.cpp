@@ -62,6 +62,7 @@ PerfStats::Results PerfStats::GetAndResetStats(microseconds current_system_time_
     accumulated_frametime = Clock::duration::zero();
     system_frames = 0;
     game_frames = 0;
+    is_resetted = true;
 
     return results;
 }

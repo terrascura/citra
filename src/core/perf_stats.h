@@ -43,6 +43,13 @@ public:
      */
     double GetLastFrameTimeScale();
 
+    void UpdateResetted(bool set) {
+        is_resetted = set;
+    }
+    bool IsResetted() {
+        return is_resetted;
+    }
+
 private:
     std::mutex object_mutex;
 
@@ -57,6 +64,7 @@ private:
     u32 system_frames = 0;
     /// Cumulative number of game frames (GSP frame submissions) since last reset
     u32 game_frames = 0;
+    bool is_resetted = false;
 
     /// Point when the previous system frame ended
     Clock::time_point previous_frame_end = reset_point;
