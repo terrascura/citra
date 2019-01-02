@@ -27,6 +27,18 @@ ConfigureGraphics::ConfigureGraphics(QWidget* parent)
     ui->clear_cache_secs->setEnabled(Settings::values.enable_cache_clear);
     connect(ui->enable_cache_clear, &QCheckBox::stateChanged, ui->clear_cache_secs, &QSpinBox::setEnabled);
 
+    ui->custom_layout->setChecked(Settings::values.custom_layout);
+    ui->layout_combobox->setEnabled(!Settings::values.custom_layout);
+    ui->custom_layout_group->setVisible(Settings::values.custom_layout);
+    ui->custom_top_left->setValue(Settings::values.custom_top_left);
+    ui->custom_top_top->setValue(Settings::values.custom_top_top);
+    ui->custom_top_right->setValue(Settings::values.custom_top_right);
+    ui->custom_top_bottom->setValue(Settings::values.custom_top_bottom);
+    ui->custom_bottom_left->setValue(Settings::values.custom_bottom_left);
+    ui->custom_bottom_top->setValue(Settings::values.custom_bottom_top);
+    ui->custom_bottom_right->setValue(Settings::values.custom_bottom_right);
+    ui->custom_bottom_bottom->setValue(Settings::values.custom_bottom_bottom);
+
     ui->layoutBox->setEnabled(!Settings::values.custom_layout);
 
     ui->hw_renderer_group->setEnabled(ui->toggle_hw_renderer->isChecked());
@@ -35,6 +47,10 @@ ConfigureGraphics::ConfigureGraphics(QWidget* parent)
     ui->hw_shader_group->setEnabled(ui->toggle_hw_shader->isChecked());
     connect(ui->toggle_hw_shader, &QCheckBox::stateChanged, ui->hw_shader_group,
             &QWidget::setEnabled);
+    connect(ui->custom_layout, &QCheckBox::stateChanged, ui->custom_layout_group,
+            &QWidget::setVisible);
+    connect(ui->custom_layout, &QCheckBox::stateChanged, ui->layout_combobox,
+            &QWidget::setDisabled);
 #ifdef __APPLE__
     connect(ui->toggle_hw_shader, &QCheckBox::stateChanged, this, [this](int state) {
         if (state == Qt::Checked) {
@@ -110,6 +126,15 @@ void ConfigureGraphics::applyConfiguration() {
     Settings::values.screen_refresh_rate = ui->screen_refresh_rate->value();
     Settings::values.enable_cache_clear = ui->enable_cache_clear->isChecked();
     Settings::values.clear_cache_secs = ui->clear_cache_secs->value();
+    Settings::values.custom_layout = ui->custom_layout->isChecked();
+    Settings::values.custom_top_left = ui->custom_top_left->value();
+    Settings::values.custom_top_top = ui->custom_top_top->value();
+    Settings::values.custom_top_right = ui->custom_top_right->value();
+    Settings::values.custom_top_bottom = ui->custom_top_bottom->value();
+    Settings::values.custom_bottom_left = ui->custom_bottom_left->value();
+    Settings::values.custom_bottom_top = ui->custom_bottom_top->value();
+    Settings::values.custom_bottom_right = ui->custom_bottom_right->value();
+    Settings::values.custom_bottom_bottom = ui->custom_bottom_bottom->value();
 }
 
 void ConfigureGraphics::retranslateUi() {
