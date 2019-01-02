@@ -22,6 +22,8 @@ ConfigureGraphics::ConfigureGraphics(QWidget* parent)
             &QSpinBox::setEnabled);
     ui->AddTicks->setEnabled(Settings::values.FMV_hack);
     connect(ui->FMV_hack, &QCheckBox::stateChanged, ui->AddTicks, &QSpinBox::setEnabled);
+    ui->screen_refresh_rate->setEnabled(Settings::values.custom_refresh_rate);
+    connect(ui->custom_refresh_rate, &QCheckBox::stateChanged, ui->screen_refresh_rate, &QSpinBox::setEnabled);
 
     ui->layoutBox->setEnabled(!Settings::values.custom_layout);
 
@@ -75,6 +77,8 @@ void ConfigureGraphics::setConfiguration() {
         QString("QPushButton { background-color: %1 }").arg(bg_color.name()));
     ui->FMV_hack->setChecked(Settings::values.FMV_hack);
     ui->AddTicks->setValue(Settings::values.AddTicks);
+    ui->custom_refresh_rate->setChecked(Settings::values.custom_refresh_rate);
+    ui->screen_refresh_rate->setValue(Settings::values.screen_refresh_rate);
 }
 
 void ConfigureGraphics::applyConfiguration() {
@@ -98,6 +102,8 @@ void ConfigureGraphics::applyConfiguration() {
     Settings::values.bg_blue = static_cast<float>(bg_color.blueF());
     Settings::values.FMV_hack = ui->FMV_hack->isChecked();
     Settings::values.AddTicks = ui->AddTicks->value();
+    Settings::values.custom_refresh_rate = ui->custom_refresh_rate->isChecked();
+    Settings::values.screen_refresh_rate = ui->screen_refresh_rate->value();
 }
 
 void ConfigureGraphics::retranslateUi() {
