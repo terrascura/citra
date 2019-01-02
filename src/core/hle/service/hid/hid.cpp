@@ -12,11 +12,13 @@
 #include "core/hle/kernel/event.h"
 #include "core/hle/kernel/handle_table.h"
 #include "core/hle/kernel/shared_memory.h"
+#include "core/hle/kernel/shared_page.h"
 #include "core/hle/service/hid/hid.h"
 #include "core/hle/service/hid/hid_spvr.h"
 #include "core/hle/service/hid/hid_user.h"
 #include "core/hle/service/service.h"
 #include "core/movie.h"
+#include "video_core/renderer_base.h"
 #include "video_core/video_core.h"
 
 namespace Service::HID {
@@ -74,6 +76,8 @@ void Module::LoadInputDevices() {
 
 void Module::UpdatePadCallback(u64 userdata, s64 cycles_late) {
     SharedMem* mem = reinterpret_cast<SharedMem*>(shared_mem->GetPointer());
+    system.Kernel().GetSharedPageHandler().GetSharedPage().sliderstate_3d =
+        VideoCore::g_renderer->DepthSliderValue();
 
     if (is_device_reload_pending.exchange(false))
         LoadInputDevices();

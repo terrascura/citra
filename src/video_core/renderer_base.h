@@ -16,6 +16,8 @@ public:
     /// Used to reference a framebuffer
     enum kFramebuffer { kFramebuffer_VirtualXFB = 0, kFramebuffer_EFB, kFramebuffer_Texture };
 
+    enum StereoscopicMode { Off, LeftOnly, RightOnly, Anaglyph };
+
     explicit RendererBase(EmuWindow& window);
     virtual ~RendererBase();
 
@@ -30,6 +32,10 @@ public:
 
     /// Updates the framebuffer layout of the contained render window handle.
     void UpdateCurrentFramebufferLayout();
+
+    void DepthSliderChanged(float value);
+
+    void StereoscopicModeChanged(StereoscopicMode mode);
 
     // Getter/setter functions:
     // ------------------------
@@ -50,6 +56,14 @@ public:
         return render_window;
     }
 
+    f32 DepthSliderValue() {
+        return depth_slider;
+    }
+
+    StereoscopicMode GetStereoscopicMode() {
+        return stereoscopic_mode;
+    }
+
     void RefreshRasterizerSetting();
 
 protected:
@@ -57,6 +71,9 @@ protected:
     std::unique_ptr<VideoCore::RasterizerInterface> rasterizer;
     f32 m_current_fps = 0.0f; ///< Current framerate, should be set by the renderer
     int m_current_frame = 0;  ///< Current frame, should be set by the renderer
+    f32 depth_slider;         ///< 3D depth slider (0.0-1.0)
+
+    StereoscopicMode stereoscopic_mode; ///< stereoscopic mode
 
 private:
     bool opengl_rasterizer_active = false;

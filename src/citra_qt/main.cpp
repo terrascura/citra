@@ -42,6 +42,7 @@
 #include "citra_qt/hotkeys.h"
 #include "citra_qt/main.h"
 #include "citra_qt/multiplayer/state.h"
+#include "citra_qt/stereoscopic_controller.h"
 #include "citra_qt/ui_settings.h"
 #include "citra_qt/updater/updater.h"
 #include "citra_qt/util/clickable_label.h"
@@ -66,6 +67,8 @@
 #include "core/movie.h"
 #include "core/settings.h"
 #include "game_list_p.h"
+#include "video_core/renderer_base.h"
+#include "video_core/video_core.h"
 
 #ifdef USE_DISCORD_PRESENCE
 #include "citra_qt/discord_impl.h"
@@ -263,6 +266,14 @@ void GMainWindow::InitializeDebugWidgets() {
 
     QMenu* debug_menu = ui.menu_View_Debugging;
 
+    stereoscopicControllerWidget = new StereoscopicControllerWidget(this);
+    addDockWidget(Qt::LeftDockWidgetArea, stereoscopicControllerWidget);
+    stereoscopicControllerWidget->setFloating(true);
+    connect(this, &GMainWindow::EmulationStarting, stereoscopicControllerWidget,
+            &StereoscopicControllerWidget::OnEmulationStarting);
+    connect(this, &GMainWindow::EmulationStopping, stereoscopicControllerWidget,
+            &StereoscopicControllerWidget::OnEmulationStopping);
+
 #if MICROPROFILE_ENABLED
     microProfileDialog = new MicroProfileDialog(this);
     microProfileDialog->hide();
@@ -315,6 +326,9 @@ void GMainWindow::InitializeDebugWidgets() {
             &WaitTreeWidget::OnEmulationStarting);
     connect(this, &GMainWindow::EmulationStopping, waitTreeWidget,
             &WaitTreeWidget::OnEmulationStopping);
+
+    ui.menu_Emulation->addSeparator();
+    ui.menu_Emulation->addAction(stereoscopicControllerWidget->toggleViewAction());
 
     lleServiceModulesWidget = new LLEServiceModulesWidget(this);
     addDockWidget(Qt::RightDockWidgetArea, lleServiceModulesWidget);
@@ -517,6 +531,13 @@ void GMainWindow::ConnectWidgetEvents() {
     connect(game_list, &GameList::OpenFolderRequested, this, &GMainWindow::OnGameListOpenFolder);
     connect(game_list, &GameList::NavigateToGamedbEntryRequested, this,
             &GMainWindow::OnGameListNavigateToGamedbEntry);
+
+    connect(stereoscopicControllerWidget, SIGNAL(DepthChanged(float)), this,
+            SLOT(OnDepthChanged(float)));
+    connect(stereoscopicControllerWidget,
+            SIGNAL(StereoscopeModeChanged(RendererBase::StereoscopicMode)), this,
+            SLOT(OnStereoscopeModeChanged(RendererBase::StereoscopicMode)));
+
     connect(game_list, &GameList::AddDirectory, this, &GMainWindow::OnGameListAddDirectory);
     connect(game_list_placeholder, &GameListPlaceholder::AddDirectory, this,
             &GMainWindow::OnGameListAddDirectory);
@@ -669,6 +690,14 @@ void GMainWindow::ConnectToolbarEvents(){
     connect(ui.action_Toolbar_Stop_Room, &QAction::triggered, multiplayer_state, &MultiplayerState::OnCloseRoom);
     connect(ui.action_Toolbar_Connect_To_Room, &QAction::triggered, multiplayer_state, &MultiplayerState::OnDirectConnectToRoom);
     connect(ui.action_Toolbar_Chat, &QAction::triggered, multiplayer_state, &MultiplayerState::OnOpenNetworkRoom);
+}
+
+void GMainWindow::OnDepthChanged(float v) {
+    VideoCore::g_renderer->DepthSliderChanged(v);
+}
+
+void GMainWindow::OnStereoscopeModeChanged(RendererBase::StereoscopicMode mode) {
+    VideoCore::g_renderer->StereoscopicModeChanged(mode);
 }
 
 void GMainWindow::OnDisplayTitleBars(bool show) {

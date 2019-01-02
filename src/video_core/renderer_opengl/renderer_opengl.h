@@ -55,8 +55,9 @@ private:
     void ConfigureFramebufferTexture(TextureInfo& texture,
                                      const GPU::Regs::FramebufferConfig& framebuffer);
     void DrawScreens(const Layout::FramebufferLayout& layout);
-    void DrawSingleScreenRotated(const ScreenInfo& screen_info, float x, float y, float w, float h);
     void UpdateFramerate();
+    void DrawSingleScreenRotated(const ScreenInfo& screen_info, float x, float y, float w, float h,
+                                 bool left_eye, bool right_eye);
 
     // Loads framebuffer from emulated memory into the display information structure
     void LoadFBToScreenInfo(const GPU::Regs::FramebufferConfig& framebuffer,
@@ -72,7 +73,7 @@ private:
     OGLProgram shader;
     OGLFramebuffer screenshot_framebuffer;
 
-    /// Display information for top and bottom screens respectively
+    /// Display information for top-left, top-right, and bottom screens respectively
     std::array<ScreenInfo, 3> screen_infos;
 
     // Shader uniform location indices

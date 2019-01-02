@@ -84,6 +84,8 @@ add_executable(citra-qt
     game_list_worker.h
     hotkeys.cpp
     hotkeys.h
+    stereoscopic_controller.cpp
+    stereoscopic_controller.h
     main.cpp
     main.h
     multiplayer/chat_room.h

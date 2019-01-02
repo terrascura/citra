@@ -20,9 +20,9 @@ option(ENABLE_WEB_SERVICE "Enable web services (telemetry, etc.)" ON)
 
 option(ENABLE_CUBEB "Enables the cubeb audio backend" ON)
 
-option(ENABLE_FFMPEG "Enable FFmpeg decoder/encoder" OFF)
+option(ENABLE_FFMPEG "Enable FFmpeg decoder/encoder" ON)
 
-option(USE_DISCORD_PRESENCE "Enables Discord Rich Presence" OFF)
+option(USE_DISCORD_PRESENCE "Enables Discord Rich Presence" ON)
 
 option(ENABLE_SCRIPTING "Enables scripting support" OFF)
 
@@ -115,12 +115,13 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
 
 
 if (NOT MSVC)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-attributes")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=znver1 -mtune=znver1 -fpermissive -Wno-attributes -Ofast -flto -fno-use-linker-plugin -funroll-loops -lm -lpthread -pthread -floop-nest-optimize -pipe -fsched2-use-superblocks -fmodulo-sched -fmodulo-sched-allow-regmoves -malign-double -minline-all-stringops")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -s")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
 
     if (MINGW)
-        add_definitions(-DMINGW_HAS_SECURE_API)
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -gdwarf")
+        add_definitions(-DMINGW_HAS_SECURE_API -DMICROPROFILE_ENABLED=0)
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-lmcfgthread,--nxcompat,--tsaware,--major-os-version=6,--minor-os-version=1")
 
         if (MINGW_STATIC_BUILD)
             add_definitions(-DQT_STATICPLUGIN)
@@ -267,7 +268,7 @@ if (ENABLE_FFMPEG)
 
         if (DEFINED FFmpeg_VER)
             download_bundled_external("ffmpeg/" ${FFmpeg_VER} FFmpeg_PREFIX)
-            set(FFMPEG_DIR "${FFmpeg_PREFIX}/../")
+            set(FFMPEG_DIR "${FFmpeg_PREFIX}")
             set(FFMPEG_FOUND YES)
         endif()
     else()

@@ -14,6 +14,8 @@ RendererBase::~RendererBase() = default;
 void RendererBase::UpdateCurrentFramebufferLayout() {
     const Layout::FramebufferLayout& layout = render_window.GetFramebufferLayout();
     render_window.UpdateCurrentFramebufferLayout(layout.width, layout.height);
+    depth_slider = 0.0f;
+    stereoscopic_mode = Off;
 }
 
 void RendererBase::RefreshRasterizerSetting() {
@@ -27,4 +29,12 @@ void RendererBase::RefreshRasterizerSetting() {
             rasterizer = std::make_unique<VideoCore::SWRasterizer>();
         }
     }
+}
+
+void RendererBase::DepthSliderChanged(float value) {
+    depth_slider = value;
+}
+
+void RendererBase::StereoscopicModeChanged(StereoscopicMode mode) {
+    stereoscopic_mode = mode;
 }

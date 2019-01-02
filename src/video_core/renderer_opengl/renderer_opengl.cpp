@@ -21,6 +21,7 @@
 #include "core/tracer/recorder.h"
 #include "video_core/debug_utils/debug_utils.h"
 #include "video_core/rasterizer_interface.h"
+#include "video_core/renderer_base.h"
 #include "video_core/renderer_opengl/renderer_opengl.h"
 #include "video_core/video_core.h"
 
@@ -118,7 +119,7 @@ void RendererOpenGL::SwapBuffers() {
 
         // Main LCD (0): 0x1ED02204, Sub LCD (1): 0x1ED02A04
         u32 lcd_color_addr =
-            (fb_id == 0) ? LCD_REG_INDEX(color_fill_top) : LCD_REG_INDEX(color_fill_bottom);
+            (fb_id != 2) ? LCD_REG_INDEX(color_fill_top) : LCD_REG_INDEX(color_fill_bottom);
         lcd_color_addr = HW::VADDR_LCD + 4 * lcd_color_addr;
         LCD::Regs::ColorFill color_fill = {0};
         LCD::Read(color_fill.raw, lcd_color_addr);
@@ -213,7 +214,7 @@ void RendererOpenGL::LoadFBToScreenInfo(const GPU::Regs::FramebufferConfig& fram
     if (framebuffer.address_right1 == 0 || framebuffer.address_right2 == 0)
         right_eye = false;
 
-    const PAddr framebuffer_addr =
+    PAddr framebuffer_addr =
         framebuffer.active_fb == 0
             ? (!right_eye ? framebuffer.address_left1 : framebuffer.address_right1)
             : (!right_eye ? framebuffer.address_left2 : framebuffer.address_right2);
@@ -407,7 +408,7 @@ void RendererOpenGL::ConfigureFramebufferTexture(TextureInfo& texture,
  * rotation.
  */
 void RendererOpenGL::DrawSingleScreenRotated(const ScreenInfo& screen_info, float x, float y,
-                                             float w, float h) {
+                                             float w, float h, bool left_eye, bool right_eye) {
     auto& texcoords = screen_info.display_texcoords;
 
     std::array<ScreenRectVertex, 4> vertices = {{
@@ -418,12 +419,17 @@ void RendererOpenGL::DrawSingleScreenRotated(const ScreenInfo& screen_info, floa
     }};
 
     state.texture_units[0].texture_2d = screen_info.display_texture;
+    auto color_mask = state.color_mask;
+    state.color_mask.red_enabled = left_eye;
+    state.color_mask.green_enabled = right_eye;
+    state.color_mask.blue_enabled = right_eye;
     state.Apply();
 
     glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices.data());
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
     state.texture_units[0].texture_2d = 0;
+    state.color_mask = color_mask;
     state.Apply();
 }
 
@@ -453,32 +459,183 @@ void RendererOpenGL::DrawScreens(const Layout::FramebufferLayout& layout) {
     glUniform1i(uniform_color_texture, 0);
 
     if (layout.top_screen_enabled) {
-        if (!Settings::values.toggle_3d) {
-            DrawSingleScreenRotated(screen_infos[0], (float)top_screen.left, (float)top_screen.top,
-                                    (float)top_screen.GetWidth(), (float)top_screen.GetHeight());
-        } else {
-            DrawSingleScreenRotated(screen_infos[0], (float)top_screen.left / 2,
-                                    (float)top_screen.top, (float)top_screen.GetWidth() / 2,
-                                    (float)top_screen.GetHeight());
-            DrawSingleScreenRotated(screen_infos[1],
-                                    ((float)top_screen.left / 2) + ((float)layout.width / 2),
-                                    (float)top_screen.top, (float)top_screen.GetWidth() / 2,
-                                    (float)top_screen.GetHeight());
-        }
-    }
-    if (layout.bottom_screen_enabled) {
-        if (!Settings::values.toggle_3d) {
-            DrawSingleScreenRotated(screen_infos[2], (float)bottom_screen.left,
-                                    (float)bottom_screen.top, (float)bottom_screen.GetWidth(),
-                                    (float)bottom_screen.GetHeight());
-        } else {
-            DrawSingleScreenRotated(screen_infos[2], (float)bottom_screen.left / 2,
-                                    (float)bottom_screen.top, (float)bottom_screen.GetWidth() / 2,
-                                    (float)bottom_screen.GetHeight());
-            DrawSingleScreenRotated(screen_infos[2],
-                                    ((float)bottom_screen.left / 2) + ((float)layout.width / 2),
-                                    (float)bottom_screen.top, (float)bottom_screen.GetWidth() / 2,
-                                    (float)bottom_screen.GetHeight());
+        switch (GetStereoscopicMode()) {
+        case RendererBase::StereoscopicMode::Off:
+            if (layout.top_screen_enabled) {
+                if (!Settings::values.toggle_3d) {
+                    DrawSingleScreenRotated(screen_infos[0], (float)layout.top_screen.left,
+                                            (float)layout.top_screen.top,
+                                            (float)layout.top_screen.GetWidth(),
+                                            (float)layout.top_screen.GetHeight(), true, true);
+                } else {
+                    DrawSingleScreenRotated(screen_infos[0], (float)top_screen.left / 2,
+                                            (float)top_screen.top, (float)top_screen.GetWidth() / 2,
+                                            (float)top_screen.GetHeight(), true, true);
+                    DrawSingleScreenRotated(
+                        screen_infos[1], ((float)top_screen.left / 2) + ((float)layout.width / 2),
+                        (float)top_screen.top, (float)top_screen.GetWidth() / 2,
+                        (float)top_screen.GetHeight(), true, true);
+                }
+            }
+            if (layout.bottom_screen_enabled) {
+                if (!Settings::values.toggle_3d) {
+                    DrawSingleScreenRotated(screen_infos[2], (float)bottom_screen.left,
+                                            (float)bottom_screen.top,
+                                            (float)bottom_screen.GetWidth(),
+                                            (float)bottom_screen.GetHeight(), true, true);
+                } else {
+                    DrawSingleScreenRotated(screen_infos[2], (float)bottom_screen.left / 2,
+                                            (float)bottom_screen.top,
+                                            (float)bottom_screen.GetWidth() / 2,
+                                            (float)bottom_screen.GetHeight(), true, true);
+                    DrawSingleScreenRotated(
+                        screen_infos[2],
+                        ((float)bottom_screen.left / 2) + ((float)layout.width / 2),
+                        (float)bottom_screen.top, (float)bottom_screen.GetWidth() / 2,
+                        (float)bottom_screen.GetHeight(), true, true);
+                    break;
+                case RendererBase::StereoscopicMode::LeftOnly:
+                    if (layout.top_screen_enabled) {
+                        if (!Settings::values.toggle_3d) {
+                            DrawSingleScreenRotated(
+                                screen_infos[0], (float)layout.top_screen.left,
+                                (float)layout.top_screen.top, (float)layout.top_screen.GetWidth(),
+                                (float)layout.top_screen.GetHeight(), true, true);
+                        } else {
+                            DrawSingleScreenRotated(screen_infos[0], (float)top_screen.left / 2,
+                                                    (float)top_screen.top,
+                                                    (float)top_screen.GetWidth() / 2,
+                                                    (float)top_screen.GetHeight(), true, true);
+                            DrawSingleScreenRotated(
+                                screen_infos[1],
+                                ((float)top_screen.left / 2) + ((float)layout.width / 2),
+                                (float)top_screen.top, (float)top_screen.GetWidth() / 2,
+                                (float)top_screen.GetHeight(), true, true);
+                        }
+                    }
+                    if (layout.bottom_screen_enabled) {
+                        if (!Settings::values.toggle_3d) {
+                            DrawSingleScreenRotated(screen_infos[2], (float)bottom_screen.left,
+                                                    (float)bottom_screen.top,
+                                                    (float)bottom_screen.GetWidth(),
+                                                    (float)bottom_screen.GetHeight(), true, true);
+                        } else {
+                            DrawSingleScreenRotated(screen_infos[2], (float)bottom_screen.left / 2,
+                                                    (float)bottom_screen.top,
+                                                    (float)bottom_screen.GetWidth() / 2,
+                                                    (float)bottom_screen.GetHeight(), true, true);
+                            DrawSingleScreenRotated(
+                                screen_infos[2],
+                                ((float)bottom_screen.left / 2) + ((float)layout.width / 2),
+                                (float)bottom_screen.top, (float)bottom_screen.GetWidth() / 2,
+                                (float)bottom_screen.GetHeight(), true, true);
+                            break;
+                        case RendererBase::StereoscopicMode::RightOnly:
+                            if (layout.top_screen_enabled) {
+                                if (!Settings::values.toggle_3d) {
+                                    DrawSingleScreenRotated(
+                                        screen_infos[1], (float)layout.top_screen.left,
+                                        (float)layout.top_screen.top,
+                                        (float)layout.top_screen.GetWidth(),
+                                        (float)layout.top_screen.GetHeight(), true, true);
+                                } else {
+                                    DrawSingleScreenRotated(
+                                        screen_infos[0], (float)top_screen.left / 2,
+                                        (float)top_screen.top, (float)top_screen.GetWidth() / 2,
+                                        (float)top_screen.GetHeight(), true, true);
+                                    DrawSingleScreenRotated(
+                                        screen_infos[1],
+                                        ((float)top_screen.left / 2) + ((float)layout.width / 2),
+                                        (float)top_screen.top, (float)top_screen.GetWidth() / 2,
+                                        (float)top_screen.GetHeight(), true, true);
+                                }
+                            }
+                            if (layout.bottom_screen_enabled) {
+                                if (!Settings::values.toggle_3d) {
+                                    DrawSingleScreenRotated(
+                                        screen_infos[2], (float)bottom_screen.left,
+                                        (float)bottom_screen.top, (float)bottom_screen.GetWidth(),
+                                        (float)bottom_screen.GetHeight(), true, true);
+                                } else {
+                                    DrawSingleScreenRotated(
+                                        screen_infos[2], (float)bottom_screen.left / 2,
+                                        (float)bottom_screen.top,
+                                        (float)bottom_screen.GetWidth() / 2,
+                                        (float)bottom_screen.GetHeight(), true, true);
+                                    DrawSingleScreenRotated(
+                                        screen_infos[2],
+                                        ((float)bottom_screen.left / 2) + ((float)layout.width / 2),
+                                        (float)bottom_screen.top,
+                                        (float)bottom_screen.GetWidth() / 2,
+                                        (float)bottom_screen.GetHeight(), true, true);
+                                    break;
+                                case RendererBase::StereoscopicMode::Anaglyph:
+                                    if (layout.top_screen_enabled) {
+                                        if (!Settings::values.toggle_3d) {
+                                            DrawSingleScreenRotated(
+                                                screen_infos[0], (float)top_screen.left,
+                                                (float)top_screen.top, (float)top_screen.GetWidth(),
+                                                (float)top_screen.GetHeight(), true, false);
+                                            DrawSingleScreenRotated(
+                                                screen_infos[1], (float)top_screen.left,
+                                                (float)top_screen.top, (float)top_screen.GetWidth(),
+                                                (float)top_screen.GetHeight(), false, true);
+                                        } else {
+                                            DrawSingleScreenRotated(
+                                                screen_infos[0], (float)top_screen.left / 2,
+                                                (float)top_screen.top,
+                                                (float)top_screen.GetWidth() / 2,
+                                                (float)top_screen.GetHeight(), true, false);
+                                            DrawSingleScreenRotated(
+                                                screen_infos[1], (float)top_screen.left / 2,
+                                                (float)top_screen.top,
+                                                (float)top_screen.GetWidth() / 2,
+                                                (float)top_screen.GetHeight(), false, true);
+                                            DrawSingleScreenRotated(
+                                                screen_infos[0],
+                                                ((float)top_screen.left / 2) +
+                                                    ((float)layout.width / 2),
+                                                (float)top_screen.top,
+                                                (float)top_screen.GetWidth() / 2,
+                                                (float)top_screen.GetHeight(), false, true);
+                                            DrawSingleScreenRotated(
+                                                screen_infos[1],
+                                                ((float)top_screen.left / 2) +
+                                                    ((float)layout.width / 2),
+                                                (float)top_screen.top,
+                                                (float)top_screen.GetWidth() / 2,
+                                                (float)top_screen.GetHeight(), true, false);
+                                        }
+                                    }
+                                    if (layout.bottom_screen_enabled) {
+                                        if (!Settings::values.toggle_3d) {
+                                            DrawSingleScreenRotated(
+                                                screen_infos[2], (float)bottom_screen.left,
+                                                (float)bottom_screen.top,
+                                                (float)bottom_screen.GetWidth(),
+                                                (float)bottom_screen.GetHeight(), true, true);
+                                        } else {
+                                            DrawSingleScreenRotated(
+                                                screen_infos[2], (float)bottom_screen.left / 2,
+                                                (float)bottom_screen.top,
+                                                (float)bottom_screen.GetWidth() / 2,
+                                                (float)bottom_screen.GetHeight(), true, true);
+                                            DrawSingleScreenRotated(
+                                                screen_infos[2],
+                                                ((float)bottom_screen.left / 2) +
+                                                    ((float)layout.width / 2),
+                                                (float)bottom_screen.top,
+                                                (float)bottom_screen.GetWidth() / 2,
+                                                (float)bottom_screen.GetHeight(), true, true);
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 

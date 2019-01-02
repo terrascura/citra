@@ -13,6 +13,7 @@
 #include "citra_qt/hotkeys.h"
 #include "common/announce_multiplayer_room.h"
 #include "core/core.h"
+#include "video_core/renderer_base.h"
 #include "core/hle/service/am/am.h"
 #include "ui_main.h"
 
@@ -39,6 +40,7 @@ class QFutureWatcher;
 class QProgressBar;
 class RegistersWidget;
 class Updater;
+class StereoscopicControllerWidget;
 class WaitTreeWidget;
 namespace DiscordRPC {
 class DiscordInterface;
@@ -192,6 +194,8 @@ private slots:
     void OnUpdateFound(bool found, bool error);
     void OnCheckForUpdates();
     void OnOpenUpdater();
+    void OnDepthChanged(float v);
+    void OnStereoscopeModeChanged(RendererBase::StereoscopicMode);
     void OnLanguageChanged(const QString& locale);
     void Onshowtoolbar();
 
@@ -235,6 +239,7 @@ private:
     QString movie_record_path;
 
     // Debugger panes
+    StereoscopicControllerWidget* stereoscopicControllerWidget;
     ProfilerWidget* profilerWidget;
     MicroProfileDialog* microProfileDialog;
     RegistersWidget* registersWidget;
