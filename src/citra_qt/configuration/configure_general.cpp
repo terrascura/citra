@@ -27,6 +27,7 @@ void ConfigureGeneral::setConfiguration() {
     ui->toggle_check_exit->setChecked(UISettings::values.confirm_before_closing);
     ui->toggle_is_new_3ds->setChecked(Settings::values.is_new_3ds);
     ui->toggle_use_priority_boost->setChecked(Settings::values.use_priority_boost);
+    ui->toggle_use_force_indexed->setChecked(Settings::values.use_force_indexed);
 
     ui->toggle_update_check->setChecked(UISettings::values.check_for_update_on_start);
     ui->toggle_auto_update->setChecked(UISettings::values.update_on_close);
@@ -62,6 +63,7 @@ void ConfigureGeneral::applyConfiguration() {
 
     Settings::values.is_new_3ds = ui->toggle_is_new_3ds->isChecked();
     Settings::values.use_priority_boost = ui->toggle_use_priority_boost->isChecked();
+    Settings::values.use_force_indexed = ui->toggle_use_force_indexed->isChecked();
 }
 
 void ConfigureGeneral::retranslateUi() {

@@ -85,6 +85,13 @@
             </property>
            </widget>
           </item>
+          <item>
+           <widget class="QCheckBox" name="toggle_use_force_indexed">
+            <property name="text">
+             <string>Force-validate indexed PICA registers</string>
+            </property>
+           </widget>
+          </item>
          </layout>
         </item>
        </layout>
