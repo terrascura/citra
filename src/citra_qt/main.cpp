@@ -357,6 +357,8 @@ void GMainWindow::InitializeHotkeys() {
     hotkey_registry.RegisterHotkey("Main Window", "Exit Fullscreen", QKeySequence(Qt::Key_Escape),
                                    Qt::ApplicationShortcut);
     hotkey_registry.RegisterHotkey("Main Window", "Show Toolbar", QKeySequence("Ctrl+D"));
+    hotkey_registry.RegisterHotkey("Main Window", "Toggle FMV-Hack", QKeySequence("CTRL+T"),
+                                   Qt::ApplicationShortcut);
     hotkey_registry.RegisterHotkey("Main Window", "Toggle Speed Limit", QKeySequence("CTRL+Z"),
                                    Qt::ApplicationShortcut);
     hotkey_registry.RegisterHotkey("Main Window", "Increase Speed Limit", QKeySequence("+"),
@@ -429,6 +431,11 @@ void GMainWindow::InitializeHotkeys() {
                     Settings::values.frame_limit -= SPEED_LIMIT_STEP;
                     UpdateStatusBar();
                 }
+            });
+    connect(hotkey_registry.GetHotkey("Main Window", "Toggle FMV-Hack", this),
+            &QShortcut::activated, this, [&] {
+                Settings::values.FMV_hack = !Settings::values.FMV_hack;
+                UpdateStatusBar();
             });
     connect(hotkey_registry.GetHotkey("Main Window", "Toggle Frame Advancing", this),
             &QShortcut::activated, ui.action_Enable_Frame_Advancing, &QAction::trigger);
