@@ -156,6 +156,7 @@ GMainWindow::GMainWindow() : config(new Config()), emu_thread(nullptr) {
 
     ConnectMenuEvents();
     ConnectWidgetEvents();
+    ConnectToolbarEvents();
 
     SetupUIStrings();
     LOG_INFO(Frontend, "Citra Version: {} | {}-{}", Common::g_build_fullname, Common::g_scm_branch,
@@ -355,6 +356,7 @@ void GMainWindow::InitializeHotkeys() {
     hotkey_registry.RegisterHotkey("Main Window", "Fullscreen", QKeySequence::FullScreen);
     hotkey_registry.RegisterHotkey("Main Window", "Exit Fullscreen", QKeySequence(Qt::Key_Escape),
                                    Qt::ApplicationShortcut);
+    hotkey_registry.RegisterHotkey("Main Window", "Show Toolbar", QKeySequence("Ctrl+D"));
     hotkey_registry.RegisterHotkey("Main Window", "Toggle Speed Limit", QKeySequence("CTRL+Z"),
                                    Qt::ApplicationShortcut);
     hotkey_registry.RegisterHotkey("Main Window", "Increase Speed Limit", QKeySequence("+"),
@@ -497,6 +499,8 @@ void GMainWindow::RestoreUIState() {
 
     ui.action_Show_Status_Bar->setChecked(UISettings::values.show_status_bar);
     statusBar()->setVisible(ui.action_Show_Status_Bar->isChecked());
+
+    ui.action_Show_Toolbar->setChecked(UISettings::values.Show_Toolbar);
 }
 
 void GMainWindow::ConnectWidgetEvents() {
@@ -550,6 +554,7 @@ void GMainWindow::ConnectMenuEvents() {
     ui.action_Show_Filter_Bar->setShortcut(tr("CTRL+F"));
     connect(ui.action_Show_Filter_Bar, &QAction::triggered, this, &GMainWindow::OnToggleFilterBar);
     connect(ui.action_Show_Status_Bar, &QAction::triggered, statusBar(), &QStatusBar::setVisible);
+    connect(ui.action_Show_Toolbar, &QAction::triggered, this, &GMainWindow::Onshowtoolbar);
 
     // Multiplayer
     connect(ui.action_View_Lobby, &QAction::triggered, multiplayer_state,
@@ -614,6 +619,48 @@ void GMainWindow::ConnectMenuEvents() {
             &GMainWindow::OnCheckForUpdates);
     connect(ui.action_Open_Maintenance_Tool, &QAction::triggered, this,
             &GMainWindow::OnOpenUpdater);
+}
+
+void GMainWindow::ConnectToolbarEvents(){
+    // File
+    connect(ui.action_Toolbar_Load_File, &QAction::triggered, this, &GMainWindow::OnMenuLoadFile);
+
+    // Toggle fullscreen
+    connect(ui.action_Toolbar_Toggle_Fullscreen, &QAction::triggered, this, [this] {
+        if (isFullScreen()) {
+            showNormal();
+            ui.action_Toolbar_Toggle_Fullscreen->setIcon(QIcon(":toolbar_icons/rc/fullscreen.png"));
+        } else {
+            showFullScreen();
+            ui.action_Toolbar_Toggle_Fullscreen->setIcon(QIcon(":toolbar_icons/rc/fullscreen_exit.png"));
+        }
+     } );
+
+    // Emulation
+    connect(ui.action_Toolbar_Stop, &QAction::triggered, this, &GMainWindow::OnStopGame);
+    connect(ui.action_Toolbar_Start_Pause, &QAction::triggered, this, [this] {
+        if (emulation_running) {
+            OnPauseGame();
+            emulation_running = false;
+        } else {
+            OnStartGame();
+            emulation_running = true;
+        }
+    } );
+    connect(ui.action_Toolbar_Restart, &QAction::triggered, this, &GMainWindow::OnResetGame);
+
+    // Configure
+    connect(ui.action_Toolbar_Configure, &QAction::triggered, this, &GMainWindow::OnConfigure);
+
+    // Cheats
+    connect(ui.action_Toolbar_Cheats, &QAction::triggered, this, &GMainWindow::OnCheats);
+
+    // multiplayer
+    connect(ui.action_Toolbar_View_Lobby, &QAction::triggered, multiplayer_state, &MultiplayerState::OnViewLobby);
+    connect(ui.action_Toolbar_Start_Room, &QAction::triggered, multiplayer_state, &MultiplayerState::OnCreateRoom);
+    connect(ui.action_Toolbar_Stop_Room, &QAction::triggered, multiplayer_state, &MultiplayerState::OnCloseRoom);
+    connect(ui.action_Toolbar_Connect_To_Room, &QAction::triggered, multiplayer_state, &MultiplayerState::OnDirectConnectToRoom);
+    connect(ui.action_Toolbar_Chat, &QAction::triggered, multiplayer_state, &MultiplayerState::OnOpenNetworkRoom);
 }
 
 void GMainWindow::OnDisplayTitleBars(bool show) {
@@ -849,6 +896,7 @@ void GMainWindow::BootGame(const QString& filename) {
     render_window->show();
     render_window->setFocus();
 
+    current_game_path = filename;
     emulation_running = true;
     if (ui.action_Fullscreen->isChecked()) {
         ShowFullscreen();
@@ -885,6 +933,15 @@ void GMainWindow::ShutdownGame() {
     disconnect(render_window, &GRenderWindow::Closed, this, &GMainWindow::OnStopGame);
 
     // Update the GUI
+    ui.action_Toolbar_Start_Pause->setEnabled(false);
+    ui.action_Toolbar_Start_Pause->setIcon(QIcon(":toolbar_icons/rc/play.png"));
+    ui.action_Toolbar_Start_Pause->setToolTip(tr("Start"));
+    ui.action_Toolbar_Stop->setEnabled(false);
+    ui.action_Toolbar_Cheats->setEnabled(false);
+    ui.action_Toolbar_Restart->setEnabled(false);
+    ui.action_Toolbar_Start_Room->setEnabled(true);
+    ui.action_Toolbar_Stop_Room->setEnabled(false);
+    ui.action_Toolbar_Chat->setEnabled(false);
     ui.action_Start->setEnabled(false);
     ui.action_Start->setText(tr("Start"));
     ui.action_Pause->setEnabled(false);
@@ -1144,6 +1201,11 @@ void GMainWindow::OnCIAInstallFinished() {
     game_list->PopulateAsync(UISettings::values.game_dirs);
 }
 
+void GMainWindow::OnResetGame() {
+    ShutdownGame();
+    BootGame(current_game_path);
+}
+
 void GMainWindow::OnMenuRecentFile() {
     QAction* action = qobject_cast<QAction*>(sender());
     assert(action);
@@ -1188,6 +1250,14 @@ void GMainWindow::OnStartGame() {
     ui.action_Capture_Screenshot->setEnabled(true);
 
     discord_rpc->Update();
+
+    ui.action_Toolbar_Start_Pause->setEnabled(true);
+    ui.action_Toolbar_Start_Pause->setIcon(QIcon(":toolbar_icons/rc/pause.png"));
+    ui.action_Toolbar_Start_Pause->setToolTip(tr("Pause"));
+
+    ui.action_Toolbar_Stop->setEnabled(true);
+    ui.action_Toolbar_Cheats->setEnabled(true);
+    ui.action_Toolbar_Restart->setEnabled(true);
 }
 
 void GMainWindow::OnPauseGame() {
@@ -1197,6 +1267,9 @@ void GMainWindow::OnPauseGame() {
     ui.action_Pause->setEnabled(false);
     ui.action_Stop->setEnabled(true);
     ui.action_Capture_Screenshot->setEnabled(false);
+
+    ui.action_Toolbar_Start_Pause->setIcon(QIcon(":toolbar_icons/rc/play.png"));
+    ui.action_Toolbar_Start_Pause->setToolTip(tr("Continue"));
 }
 
 void GMainWindow::OnStopGame() {
@@ -1231,6 +1304,8 @@ void GMainWindow::ShowFullscreen() {
         ui.menubar->hide();
         statusBar()->hide();
         showFullScreen();
+        if(ui.action_Show_Toolbar->isChecked())
+            ui.toolbar->hide();
     } else {
         UISettings::values.renderwindow_geometry = render_window->saveGeometry();
         render_window->showFullScreen();
@@ -1243,6 +1318,8 @@ void GMainWindow::HideFullscreen() {
         ui.menubar->show();
         showNormal();
         restoreGeometry(UISettings::values.geometry);
+        if(ui.action_Show_Toolbar->isChecked())
+            ui.toolbar->show();
     } else {
         render_window->showNormal();
         render_window->restoreGeometry(UISettings::values.renderwindow_geometry);
@@ -1408,6 +1485,14 @@ void GMainWindow::OnRemoveAmiibo() {
 void GMainWindow::OnOpenCitraFolder() {
     QDesktopServices::openUrl(QUrl::fromLocalFile(
         QString::fromStdString(FileUtil::GetUserPath(FileUtil::UserPath::UserDir))));
+}
+
+void GMainWindow::Onshowtoolbar(){
+    if (ui.action_Show_Toolbar->isChecked()){
+        ui.toolbar->show();
+    }else{
+        ui.toolbar->hide();
+    }
 }
 
 void GMainWindow::OnToggleFilterBar() {
@@ -1690,6 +1775,7 @@ void GMainWindow::closeEvent(QCloseEvent* event) {
     UISettings::values.display_titlebar = ui.action_Display_Dock_Widget_Headers->isChecked();
     UISettings::values.show_filter_bar = ui.action_Show_Filter_Bar->isChecked();
     UISettings::values.show_status_bar = ui.action_Show_Status_Bar->isChecked();
+    UISettings::values.Show_Toolbar = ui.action_Show_Toolbar->isChecked();
     UISettings::values.first_start = false;
 
     game_list->SaveInterfaceLayout();
