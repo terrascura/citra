@@ -101,6 +101,7 @@ void ConfigureGraphics::setConfiguration() {
     ui->screen_refresh_rate->setValue(Settings::values.screen_refresh_rate);
     ui->enable_cache_clear->setChecked(Settings::values.enable_cache_clear);
     ui->clear_cache_secs->setValue(Settings::values.clear_cache_secs);
+    ui->min_vertices_per_thread->setValue(Settings::values.min_vertices_per_thread);
 }
 
 void ConfigureGraphics::applyConfiguration() {
@@ -129,6 +130,7 @@ void ConfigureGraphics::applyConfiguration() {
     Settings::values.screen_refresh_rate = ui->screen_refresh_rate->value();
     Settings::values.enable_cache_clear = ui->enable_cache_clear->isChecked();
     Settings::values.clear_cache_secs = ui->clear_cache_secs->value();
+    Settings::values.min_vertices_per_thread = ui->min_vertices_per_thread->value();
     Settings::values.custom_layout = ui->custom_layout->isChecked();
     Settings::values.custom_top_left = ui->custom_top_left->value();
     Settings::values.custom_top_top = ui->custom_top_top->value();

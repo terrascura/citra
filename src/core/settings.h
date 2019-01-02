@@ -146,6 +146,7 @@ struct Values {
     int screen_refresh_rate;
     bool enable_cache_clear;
     int clear_cache_secs;
+    int min_vertices_per_thread;
 
     LayoutOption layout_option;
     bool swap_screen;
